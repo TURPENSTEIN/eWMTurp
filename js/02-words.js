@@ -158,8 +158,8 @@ const SHAPES_SVG = [
   '<polygon points="50,8 92,28 92,72 50,92 8,72 8,28" fill="FILL" stroke="STROKE" stroke-width="4" stroke-linejoin="round"/>',
   '<path d="M50 8 L62 38 L94 38 L68 58 L78 90 L50 72 L22 90 L32 58 L6 38 L38 38 Z" fill="FILL" stroke="STROKE" stroke-width="4" stroke-linejoin="round"/>'
 ];
-const MOD_LABELS = {pos:'Position', col:'Color', aud:'Audio', shp:'Shape'};
-const MOD_INITIALS = {pos:'P', col:'C', aud:'A', shp:'S'};
+const MOD_LABELS = {pos:'Position', col:'Color', aud:'Audio', shp:'Shape', img:'Image'};
+const MOD_INITIALS = {pos:'P', col:'C', aud:'A', shp:'S', img:'I'};
 
 /*
  * A colour and a picture per modality, used everywhere that modality appears.
@@ -177,7 +177,8 @@ const MOD_COLORS = {
   pos: '#4da3ff',
   aud: '#c07cff',
   shp: '#ffb020',
-  col: '#28d9c5'
+  col: '#28d9c5',
+  img: '#f472b6'
 };
 
 /* Drawn rather than written: a glyph is recognised, a letter is read. */
@@ -188,5 +189,8 @@ const MOD_ICONS = {
      + '<path d="M17 8.5a5 5 0 0 1 0 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>'
      + '<path d="M19.5 5.5a9 9 0 0 1 0 13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" opacity=".5"/>',
   shp: '<path d="M12 3l9 16H3z"/>',
-  col: '<circle cx="9" cy="9" r="6"/><circle cx="15" cy="15" r="6" opacity=".45"/>'
+  col: '<circle cx="9" cy="9" r="6"/><circle cx="15" cy="15" r="6" opacity=".45"/>',
+  img: '<rect x="3" y="5" width="18" height="14" rx="2" fill="none" stroke="currentColor" stroke-width="2"/>'
+     + '<circle cx="9" cy="10" r="1.8"/>'
+     + '<path d="M3 17l5.5-5.5 4 4 3-3L21 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>'
 };

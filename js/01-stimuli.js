@@ -527,9 +527,35 @@ const CustomStimuli = {
   DB: 'ewmturp',
   STORE: 'custom-images',
   KEY: 'images',
+  DECK_KEY: 'decks-v1',
 
   /** In memory for the session; the database is the durable copy. */
   images: [],
+
+  /* Named decks of the player's own pictures (e.g. "gore", "social anxiety"). */
+  decks: [],
+  activeDeckId: null,
+
+  getActiveDeck() {
+    return this.decks.find(d => d.id === this.activeDeckId) || this.decks[0] || null;
+  },
+
+  getActiveDeckName() {
+    const deck = this.getActiveDeck();
+    return deck ? deck.name : 'Default';
+  },
+
+  _syncImagesFromActiveDeck() {
+    const deck = this.getActiveDeck();
+    this.images = deck ? deck.images : [];
+  },
+
+  _newId() {
+    try {
+      if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID();
+    } catch (e) {}
+    return 'deck-' + Date.now().toString(36) + '-' + Math.floor(Math.random() * 1e9).toString(36);
+  },
 
   /*
    * Decoded, so a trial can paint on the frame it is asked for.
@@ -556,15 +582,71 @@ const CustomStimuli = {
     });
   },
 
+  _get(db, key) {
+    return new Promise((resolve, reject) => {
+      const req = db.transaction(this.STORE, 'readonly').objectStore(this.STORE).get(key);
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+  },
+
+  _put(db, value, key) {
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(this.STORE, 'readwrite');
+      tx.objectStore(this.STORE).put(value, key);
+      tx.oncomplete = resolve;
+      tx.onerror = () => reject(tx.error);
+    });
+  },
+
+  _normalizeDecks(raw) {
+    if (raw && Array.isArray(raw.decks)) {
+      const decks = raw.decks
+        .filter(d => d && typeof d === 'object')
+        .map(d => ({
+          id: String(d.id || this._newId()),
+          name: String(d.name || 'Untitled').slice(0, 40) || 'Untitled',
+          images: Array.isArray(d.images) ? d.images : []
+        }))
+        .filter(d => d.name);
+      if (decks.length) {
+        const activeId = decks.some(d => d.id === raw.activeId) ? raw.activeId : decks[0].id;
+        return { decks, activeId };
+      }
+    }
+    return null;
+  },
+
+  async _persistDecks() {
+    try {
+      const db = await this._open();
+      await this._put(db, { decks: this.decks, activeId: this.activeDeckId }, this.DECK_KEY);
+      return true;
+    } catch (e) {
+      console.warn('[CustomStimuli] Could not save decks:', e);
+      return false;
+    }
+  },
+
   async load() {
     try {
       const db = await this._open();
-      const list = await new Promise((resolve, reject) => {
-        const req = db.transaction(this.STORE, 'readonly').objectStore(this.STORE).get(this.KEY);
-        req.onsuccess = () => resolve(req.result || []);
-        req.onerror = () => reject(req.error);
-      });
-      this.images = Array.isArray(list) ? list : [];
+      const stored = await this._get(db, this.DECK_KEY);
+      const normalized = this._normalizeDecks(stored);
+      if (normalized) {
+        this.decks = normalized.decks;
+        this.activeDeckId = normalized.activeId;
+        this._syncImagesFromActiveDeck();
+        this.warm();
+        return this.images;
+      }
+      // Migrate the previous single-list format into one "Default" deck.
+      const legacy = await this._get(db, this.KEY);
+      const list = Array.isArray(legacy) ? legacy : [];
+      this.decks = [{ id: this._newId(), name: 'Default', images: list }];
+      this.activeDeckId = this.decks[0].id;
+      this._syncImagesFromActiveDeck();
+      if (list.length) await this._persistDecks();
       /*
        * Decoding is started, not waited for.
        *
@@ -579,7 +661,11 @@ const CustomStimuli = {
     } catch (e) {
       // No database is not an error worth stopping for: the option simply has
       // nothing in it, and every other stimulus set still works.
-      this.images = [];
+      if (!this.decks.length) {
+        this.decks = [{ id: this._newId(), name: 'Default', images: [] }];
+        this.activeDeckId = this.decks[0].id;
+      }
+      this._syncImagesFromActiveDeck();
     }
     return this.images;
   },
@@ -603,21 +689,74 @@ const CustomStimuli = {
   },
 
   async save(list) {
-    this.images = list;
+    // Saves into the active deck, keeping the legacy single-list call working.
+    const deck = this.getActiveDeck();
+    const next = Array.isArray(list) ? list : [];
+    if (deck) deck.images = next;
+    else {
+      this.decks = [{ id: this._newId(), name: 'Default', images: next }];
+      this.activeDeckId = this.decks[0].id;
+    }
+    this._syncImagesFromActiveDeck();
     this.warm();
     try {
       const db = await this._open();
-      await new Promise((resolve, reject) => {
-        const tx = db.transaction(this.STORE, 'readwrite');
-        tx.objectStore(this.STORE).put(list, this.KEY);
-        tx.oncomplete = resolve;
-        tx.onerror = () => reject(tx.error);
-      });
+      await this._put(db, next, this.KEY);
+      await this._persistDecks();
       return true;
     } catch (e) {
       console.warn('[CustomStimuli] Could not save:', e);
       return false;
     }
+  },
+
+  async createDeck(name) {
+    const clean = String(name || '').trim().slice(0, 40);
+    if (!clean) return null;
+    const deck = { id: this._newId(), name: clean, images: [] };
+    this.decks.push(deck);
+    this.activeDeckId = deck.id;
+    this._syncImagesFromActiveDeck();
+    this.warm();
+    await this._persistDecks();
+    return deck;
+  },
+
+  async renameDeck(id, name) {
+    const deck = this.decks.find(d => d.id === id);
+    if (!deck) return false;
+    const clean = String(name || '').trim().slice(0, 40);
+    if (!clean) return false;
+    deck.name = clean;
+    await this._persistDecks();
+    return true;
+  },
+
+  async deleteDeck(id) {
+    if (this.decks.length <= 1) {
+      // Never leave the feature without a deck: clear the last one instead.
+      const only = this.decks[0];
+      if (only) only.images = [];
+      this._syncImagesFromActiveDeck();
+      this.warm();
+      await this.save(this.images);
+      return true;
+    }
+    this.decks = this.decks.filter(d => d.id !== id);
+    if (this.activeDeckId === id) this.activeDeckId = this.decks[0].id;
+    this._syncImagesFromActiveDeck();
+    this.warm();
+    await this._persistDecks();
+    return true;
+  },
+
+  async setActiveDeck(id) {
+    if (!this.decks.some(d => d.id === id)) return false;
+    this.activeDeckId = id;
+    this._syncImagesFromActiveDeck();
+    this.warm();
+    await this._persistDecks();
+    return true;
   },
 
   /**

@@ -654,3 +654,16 @@ select:focus, input:focus { border-color:var(--cyan); }
 @media (max-width:820px) {
   .stimulus-primary-grid { grid-template-columns:1fr; }
 }
+
+/* Additive: Tri N-Back mode card, custom image decks, developer credit. Nothing above is altered. */
+.mode-cards { grid-template-columns:repeat(3,1fr); }
+@media (max-width:640px) {
+  .mode-cards { grid-template-columns:1fr; }
+}
+.custom-deck-row { display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:8px; }
+.custom-deck-label { font-family:var(--font-mono); font-size:.62rem; letter-spacing:1px; color:var(--text-muted); text-transform:uppercase; }
+#custom-deck-select { flex:1 1 140px; min-width:120px; }
+#custom-deck-name { flex:1 1 140px; min-width:120px; background:var(--bg-panel); border:1px solid var(--border); color:var(--text); border-radius:6px; padding:6px 10px; font-size:.8rem; outline:none; }
+#custom-deck-name:focus { border-color:var(--cyan); }
+.custom-deck-row .btn { padding:8px 12px; font-size:.75rem; }
+.app-footer { max-width:var(--shell); width:100%; margin:0 auto 30px; padding:10px 0 6px; text-align:center; font-family:var(--font-mono); font-size:.6rem; font-weight:700; letter-spacing:3px; color:var(--text-dim); }

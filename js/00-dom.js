@@ -32,6 +32,8 @@ const SETTINGS_STORAGE_KEY = STORAGE_KEY + '_settings_v3';
 // ==================== SESSION / TRIAL DEFAULTS ====================
 const DEFAULT_ISI = 1800;
 const DEFAULT_SESSION_DURATION_MIN = 10;
+// Absolute ceiling for the adaptive / manual N-back level (raised per request).
+const MAX_N_LEVEL = 20;
 
 // Stimulus presentation is intentionally unchanged.
 // ISI is the blank/response interval after the stimulus.

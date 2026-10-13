@@ -26,7 +26,7 @@ class GameEngine {
     this.voices = [];
     this.selectedVoice = null;
     this.mode = 'dual';
-    this.keys = {pos:'a', aud:'l', shp:'s', col:'d'};
+    this.keys = {pos:'a', aud:'l', shp:'s', col:'d', img:'f'};
     this.listeningBind = null;
     this.activeStimuli = [];
     this.imageCache = {};
@@ -228,6 +228,7 @@ class GameEngine {
       stimAud: safeBool('chk-aud'),
       stimShp: safeBool('chk-shp'),
       stimCol: safeBool('chk-col'),
+      stimImg: safeBool('chk-img'),
     };
   }
 
@@ -238,6 +239,7 @@ class GameEngine {
     if (s.stimAud) this.activeStimuli.push('aud');
     if (s.stimShp) this.activeStimuli.push('shp');
     if (s.stimCol) this.activeStimuli.push('col');
+    if (s.stimImg) this.activeStimuli.push('img');
     if (this.activeStimuli.length === 0) {
       this.activeStimuli = ['pos'];
       const el = document.getElementById('chk-pos');
@@ -366,8 +368,41 @@ class GameEngine {
     const shpSeq = this.genSequence(SHAPES_SVG.length, this.kSeq, s.matchRate, s.interference / 100);
 
     this.trials = [];
+    // Image-identity n-back: when the Image modality is tracked, the exact
+    // picture shown is itself the sequence (match = same image as N trials
+    // ago), generated with the same match/lure rates as every other modality.
+    const trackImage = this.activeStimuli.includes('img');
+    const visualHistory = [];
     for (let i = 0; i < this.blockTrials; i++) {
-      const visual = this.pickVisualStimulus(s.emoLoad);
+      const k = this.kSeq[i];
+      let visual;
+      if (trackImage && i >= k && Math.random() < s.matchRate) {
+        visual = visualHistory[i - k];
+      } else if (trackImage && i >= k) {
+        let picked = null;
+        if (Math.random() < s.interference / 100) {
+          const lures = [];
+          for (let lag = 1; lag <= 4; lag++) {
+            if (i - lag >= 0 && visualHistory[i - lag] && visualHistory[i - k]
+              && visualHistory[i - lag].path !== visualHistory[i - k].path) {
+              lures.push(visualHistory[i - lag]);
+            }
+          }
+          if (lures.length > 0) picked = lures[Math.floor(Math.random() * lures.length)];
+        }
+        if (!picked) {
+          const targetPath = (i >= k && visualHistory[i - k]) ? visualHistory[i - k].path : null;
+          for (let attempt = 0; attempt < 12; attempt++) {
+            const candidate = this.pickVisualStimulus(s.emoLoad);
+            if (candidate.path !== targetPath) { picked = candidate; break; }
+            picked = candidate;
+          }
+        }
+        visual = picked;
+      } else {
+        visual = this.pickVisualStimulus(s.emoLoad);
+      }
+      visualHistory.push(visual);
       const word = this.pickWord(s.emoLoad);
       const audWord = AFFECTIVE_AUDIO_WORDS[audSeq[i]];
 

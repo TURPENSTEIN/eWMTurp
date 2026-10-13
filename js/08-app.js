@@ -78,14 +78,17 @@ const App = {
     bindInput('chk-aud', 'change', () => this.onStimChange());
     bindInput('chk-shp', 'change', () => this.onStimChange());
     bindInput('chk-col', 'change', () => this.onStimChange());
+    bindInput('chk-img', 'change', () => this.onStimChange());
 
     // Persist every user-facing configuration control.
     this.bindSettingsPersistence();
 
     // Mode cards
     const modeDual = document.getElementById('mode-dual');
+    const modeTri = document.getElementById('mode-tri');
     const modeQuad = document.getElementById('mode-quad');
     if (modeDual) modeDual.addEventListener('click', () => this.setMode('dual'));
+    if (modeTri) modeTri.addEventListener('click', () => this.setMode('tri'));
     if (modeQuad) modeQuad.addEventListener('click', () => this.setMode('quad'));
 
     document.querySelectorAll('[data-stimulus-type]').forEach(card => {
@@ -240,6 +243,7 @@ const App = {
     // Initial UI state
     this.setMode(this._savedMode || 'dual', false);
     this.bindCustomStimuli();
+    this.bindCustomDecks();
     /*
      * Kept as a promise, not fired and forgotten.
      *
@@ -251,7 +255,7 @@ const App = {
      */
     // `load()` decodes the set on its way through, so awaiting this means the
     // pictures are both present and ready to paint.
-    this.customReady = CustomStimuli.load().then(() => this.updateCustomCount());
+    this.customReady = CustomStimuli.load().then(() => { this.updateCustomCount(); this.refreshCustomDecks(); });
     this.setStimulusType(this._savedStimulusType || 'human_faces', false, { skipAgeGate: true });
     this.setAnimeMode(this._savedAnimeMode || 'standard', false);
     this.refreshSettingDisplays();
@@ -281,7 +285,7 @@ const App = {
       'chk-variable-n','rng-var-min','inp-var-max','chk-adaptive','sel-isi-mode',
       'rng-isi-fixed','rng-isi-min','rng-isi-max','rng-stim-dur','rng-session-duration',
       'chk-tally','chk-buzzer','chk-feedback','chk-word-interference','chk-dichotic','rng-interference','rng-match-rate','sel-voice',
-      'chk-pos','chk-aud','chk-shp','chk-col'
+      'chk-pos','chk-aud','chk-shp','chk-col','chk-img'
     ];
   },
 
@@ -319,7 +323,7 @@ const App = {
         else el.value = values[id];
       });
       if (saved?.keys && typeof saved.keys === 'object') {
-        this.engine.keys = Object.assign({}, this.engine.keys, saved.keys);
+        this.engine.keys = Object.assign({pos:'a', aud:'l', shp:'s', col:'d', img:'f'}, this.engine.keys, saved.keys);
 
         // Migrate the older arrow-key defaults to the requested A/L/S/D layout.
         const legacy = {
@@ -328,14 +332,14 @@ const App = {
           shp: 'ArrowDown',
           col: 'ArrowUp'
         };
-        const modern = { pos:'a', aud:'l', shp:'s', col:'d' };
+        const modern = { pos:'a', aud:'l', shp:'s', col:'d', img:'f' };
         Object.keys(legacy).forEach(type => {
           if (this.engine.keys[type] === legacy[type]) {
             this.engine.keys[type] = modern[type];
           }
         });
       }
-      this._savedMode = saved?.mode === 'quad' ? 'quad' : 'dual';
+      this._savedMode = ['dual', 'tri', 'quad'].includes(saved?.mode) ? saved.mode : 'dual';
       this._savedStimulusType = normalizeStimulusType(saved?.stimulusType);
       this._savedAnimeMode = ['standard', 'waifu', 'hentai', 'gore', 'porn'].includes(saved?.animeMode)
         ? saved.animeMode
@@ -420,20 +424,28 @@ const App = {
   },
 
   setMode(mode, persist = true) {
+    if (!['dual', 'tri', 'quad'].includes(mode)) mode = 'dual';
     this.engine.mode = mode;
     const dual = document.getElementById('mode-dual');
+    const tri = document.getElementById('mode-tri');
     const quad = document.getElementById('mode-quad');
     if (dual) dual.classList.toggle('active', mode === 'dual');
+    if (tri) tri.classList.toggle('active', mode === 'tri');
     if (quad) quad.classList.toggle('active', mode === 'quad');
     const isQuad = mode === 'quad';
+    const isTri = mode === 'tri';
     const shpWrap = document.getElementById('chk-shp-wrapper');
     const colWrap = document.getElementById('chk-col-wrapper');
+    const imgWrap = document.getElementById('chk-img-wrapper');
     if (shpWrap) shpWrap.style.display = isQuad ? 'flex' : 'none';
     if (colWrap) colWrap.style.display = isQuad ? 'flex' : 'none';
+    if (imgWrap) imgWrap.style.display = isTri ? 'flex' : 'none';
     const shp = document.getElementById('chk-shp');
     const col = document.getElementById('chk-col');
+    const img = document.getElementById('chk-img');
     if (shp) shp.checked = isQuad;
     if (col) col.checked = isQuad;
+    if (img) img.checked = isTri;
     this.onStimChange();
     if (persist) this.saveSettings();
   },
@@ -471,6 +483,7 @@ const App = {
         }
         const saved = await CustomStimuli.save(CustomStimuli.images.concat(added));
         this.updateCustomCount();
+        this.refreshCustomDecks();
         if (note) {
           note.textContent = saved
             ? 'Added ' + added.length + '. Kept on this device only — nothing is uploaded.'
@@ -483,7 +496,72 @@ const App = {
       clear.addEventListener('click', async () => {
         await CustomStimuli.save([]);
         this.updateCustomCount();
+        this.refreshCustomDecks();
         if (note) note.textContent = 'Cleared.';
+      });
+    }
+  },
+
+  /* Named decks for the player's own pictures. Additive; single-list flows above are untouched. */
+  refreshCustomDecks() {
+    const sel = document.getElementById('custom-deck-select');
+    if (!sel) return;
+    sel.innerHTML = '';
+    CustomStimuli.decks.forEach(deck => {
+      const opt = document.createElement('option');
+      opt.value = deck.id;
+      opt.textContent = deck.name + ' (' + deck.images.length + ')';
+      if (deck.id === CustomStimuli.activeDeckId) opt.selected = true;
+      sel.appendChild(opt);
+    });
+    this.updateCustomCount();
+  },
+
+  bindCustomDecks() {
+    const sel = document.getElementById('custom-deck-select');
+    const nameInput = document.getElementById('custom-deck-name');
+    const btnNew = document.getElementById('custom-deck-create');
+    const btnRename = document.getElementById('custom-deck-rename');
+    const btnDelete = document.getElementById('custom-deck-delete');
+    const note = document.getElementById('custom-deck-note');
+    const say = (msg) => { if (note) note.textContent = msg; };
+    if (sel && !sel.dataset.bound) {
+      sel.dataset.bound = '1';
+      sel.addEventListener('change', async () => {
+        await CustomStimuli.setActiveDeck(sel.value);
+        this.refreshCustomDecks();
+        say('Switched to deck "' + CustomStimuli.getActiveDeckName() + '".');
+      });
+    }
+    if (btnNew && !btnNew.dataset.bound) {
+      btnNew.dataset.bound = '1';
+      btnNew.addEventListener('click', async () => {
+        const name = (nameInput?.value || '').trim();
+        if (!name) { say('Type a deck name first.'); return; }
+        const deck = await CustomStimuli.createDeck(name);
+        if (nameInput) nameInput.value = '';
+        this.refreshCustomDecks();
+        say(deck ? 'Created deck "' + deck.name + '".' : 'Could not create that deck.');
+      });
+    }
+    if (btnRename && !btnRename.dataset.bound) {
+      btnRename.dataset.bound = '1';
+      btnRename.addEventListener('click', async () => {
+        const name = (nameInput?.value || '').trim();
+        if (!name) { say('Type the new name first.'); return; }
+        const ok = await CustomStimuli.renameDeck(CustomStimuli.activeDeckId, name);
+        if (nameInput) nameInput.value = '';
+        this.refreshCustomDecks();
+        say(ok ? 'Deck renamed.' : 'Could not rename that deck.');
+      });
+    }
+    if (btnDelete && !btnDelete.dataset.bound) {
+      btnDelete.dataset.bound = '1';
+      btnDelete.addEventListener('click', async () => {
+        const deck = CustomStimuli.getActiveDeck();
+        await CustomStimuli.deleteDeck(CustomStimuli.activeDeckId);
+        this.refreshCustomDecks();
+        say(deck ? 'Deleted deck "' + deck.name + '".' : 'Deck deleted.');
       });
     }
   },
@@ -1538,6 +1616,7 @@ const App = {
       else if (type === 'pos') isTarget = current.pos === previous.pos;
       else if (type === 'shp') isTarget = current.shp === previous.shp;
       else if (type === 'col') isTarget = current.col === previous.col;
+      else if (type === 'img') isTarget = current.face === previous.face;
     }
     this.flashIndicator(type, isTarget ? 'correct' : 'wrong');
     this.updateAccuracyHUD();
@@ -1555,6 +1634,7 @@ const App = {
       else if (type === 'pos') isTarget = current.pos === previous.pos;
       else if (type === 'shp') isTarget = current.shp === previous.shp;
       else if (type === 'col') isTarget = current.col === previous.col;
+      else if (type === 'img') isTarget = current.face === previous.face;
       if (isTarget && !this.engine.responses[type][this.engine.currentTrial]) {
         missedTarget = true;
         // Its own status: a missed target and a false alarm are different
@@ -1606,6 +1686,7 @@ const App = {
         else if (type === 'pos') isTarget = current.pos === previous.pos;
         else if (type === 'shp') isTarget = current.shp === previous.shp;
         else if (type === 'col') isTarget = current.col === previous.col;
+        else if (type === 'img') isTarget = current.face === previous.face;
         const responded = this.engine.responses[type][i];
         if (isTarget && responded) { st.hits++; blockHits++; }
         else if (isTarget && !responded) { st.misses++; blockMisses++; }
@@ -1638,7 +1719,7 @@ const App = {
     let transitionAction = 'maintaining';
     const previousN = this.engine.currentN;
     if (s.adaptive) {
-      if (blockD > 2.2 && this.engine.currentN < 9) {
+      if (blockD > 2.2 && this.engine.currentN < (typeof MAX_N_LEVEL !== 'undefined' ? MAX_N_LEVEL : 20)) {
         this.engine.currentN++;
         transitionAction = 'advancing';
         if (this.engine.currentN > this.engine.highestN) this.engine.highestN = this.engine.currentN;
@@ -1701,6 +1782,7 @@ const App = {
         else if (type === 'pos') isTarget = current.pos === previous.pos;
         else if (type === 'shp') isTarget = current.shp === previous.shp;
         else if (type === 'col') isTarget = current.col === previous.col;
+        else if (type === 'img') isTarget = current.face === previous.face;
 
         const responded = !!(this.engine.responses[type] && this.engine.responses[type][i]);
         if (isTarget && responded) hits++;
@@ -1915,7 +1997,7 @@ const App = {
       const dprimeData = sessions.slice(-20).map((s, i) => ({x: (i+1).toString(), y: s.overallDPrime || 0}));
       ChartRenderer.drawLine(document.getElementById('chart-dprime'), dprimeData, '#00f0ff', true);
 
-      const modTotals = {pos:{hits:0, fa:0}, col:{hits:0, fa:0}, aud:{hits:0, fa:0}, shp:{hits:0, fa:0}};
+      const modTotals = {pos:{hits:0, fa:0}, col:{hits:0, fa:0}, aud:{hits:0, fa:0}, shp:{hits:0, fa:0}, img:{hits:0, fa:0}};
       sessions.forEach(s => {
         if (s.modalityStats) {
           s.modalityStats.forEach(m => {
@@ -1929,7 +2011,7 @@ const App = {
         const total = t.hits + t.fa;
         return total > 0 ? (t.hits / total) * 100 : 0;
       });
-      ChartRenderer.drawBars(document.getElementById('chart-modality'), modLabels.map(k => MOD_LABELS[k] || k), modAccs, ['#00f0ff', '#ff006e', '#00ff88', '#ffaa00']);
+      ChartRenderer.drawBars(document.getElementById('chart-modality'), modLabels.map(k => MOD_LABELS[k] || k), modAccs, ['#00f0ff', '#ff006e', '#00ff88', '#ffaa00', '#f472b6']);
 
       const tod = StatsManager.getTimeOfDayData();
       ChartRenderer.drawBars(document.getElementById('chart-tod'), ['Night', 'Morning', 'Afternoon', 'Evening'], tod, ['#4b5563', '#00f0ff', '#ffaa00', '#ff006e']);
