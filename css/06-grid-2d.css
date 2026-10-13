@@ -1,0 +1,197 @@
+/* ================================================================
+   2D GRID OVERFLOW FIX
+   Keeps the complete 3x3 matrix inside the game-stage on every viewport.
+   This does not alter the 3D renderer, stimulus logic, or visual assets.
+   ================================================================ */
+
+.game-stage {
+  position: relative;
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  width: 100%;
+  height: 100%;
+  max-width: 100%;
+  max-height: 100%;
+  overflow: hidden !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+}
+
+.grid-2d {
+  position: relative;
+  flex: 0 1 auto;
+  width: min(100%, 72vh, 72vw);
+  height: min(100%, 72vh, 72vw);
+  max-width: 100%;
+  max-height: 100%;
+  min-width: 0;
+  min-height: 0;
+  margin: auto;
+  padding: 0;
+  box-sizing: border-box;
+  overflow: hidden !important;
+
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-rows: repeat(3, minmax(0, 1fr));
+  gap: clamp(4px, 0.65vmin, 10px);
+
+  align-content: stretch;
+  justify-content: stretch;
+  place-content: stretch;
+}
+
+.grid-2d > * {
+  min-width: 0 !important;
+  min-height: 0 !important;
+  max-width: 100% !important;
+  max-height: 100% !important;
+  box-sizing: border-box !important;
+  overflow: hidden !important;
+}
+
+.grid-2d .grid-cell,
+.grid-2d .cell,
+.grid-2d [class*="cell"] {
+  min-width: 0;
+  min-height: 0;
+  max-width: 100%;
+  max-height: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.grid-2d img,
+.grid-2d video,
+.grid-2d canvas {
+  display: block;
+  max-width: 100%;
+  max-height: 100%;
+  box-sizing: border-box;
+}
+
+@media (max-width: 767px) {
+  .game-stage {
+    min-height: 0;
+    height: 100%;
+    padding: clamp(4px, 1.5vw, 12px);
+  }
+
+  .grid-2d {
+    width: min(
+      100%,
+      78vh,
+      92vw
+    );
+    height: min(
+      100%,
+      78vh,
+      92vw
+    );
+    gap: clamp(3px, 1vw, 7px);
+  }
+}
+
+@media (min-width: 768px) {
+  .grid-2d {
+    width: min(
+      100%,
+      68vh,
+      68vw
+    );
+    height: min(
+      100%,
+      68vh,
+      68vw
+    );
+  }
+}
+
+/* Prevent any visual effect/pseudo-element from painting outside the matrix. */
+.grid-2d::before,
+.grid-2d::after,
+.grid-2d > *::before,
+.grid-2d > *::after {
+  max-width: 100%;
+  max-height: 100%;
+}
+
+
+/* ------------------------------------------------------------------ *
+ * Shape and colour, inside the cell                                   *
+ * ------------------------------------------------------------------ */
+
+/*
+ * Inset rather than filling the square, so the picture stays legible around it
+ * — the shape is a second stimulus on the same trial, not a lid over the first.
+ * Above `.cell-overlay`, which is a darkening gradient the shape has to read
+ * against.
+ */
+/*
+ * Low in the cell, and smaller than the picture it sits on.
+ *
+ * Centred and at 20% it covered the face it was supposed to accompany. Down at
+ * the bottom edge it reads as a second mark on the same trial rather than a
+ * badge over the first, and a face is mostly upper-cell anyway — so this is the
+ * part of the square with least to lose.
+ */
+.cell-2d .cell-shape {
+  position:absolute;
+  left:0; right:0; bottom:3%;
+  /*
+   * The box scales, not the drawing inside it.
+   *
+   * `bottom` pins the bottom edge, so growing `height` extends the box upward
+   * and the badge stays where it was put — which is the opposite of what the
+   * comment here used to claim, and the reason the scaling was on the drawing
+   * instead. Scaling the drawing inside a box that stayed 32% tall meant
+   * anything above 100% was taller than its own container.
+   */
+  height:calc(32% * var(--shape-scale, 1));
+  /*
+   * And that container clips. `.grid-2d [class*="cell"]` is a substring match,
+   * so it catches `cell-shape` as well as the cells it was written for and
+   * hands it `overflow:hidden` — which is what cut the top off every enlarged
+   * badge. Overridden here rather than by narrowing that selector, which is
+   * load-bearing for the cells themselves.
+   */
+  overflow:visible;
+  z-index:3;
+  display:flex;
+  align-items:flex-end;
+  justify-content:center;
+  pointer-events:none;
+}
+
+/*
+ * The drawing simply fills its box, which is the thing the slider scales.
+ *
+ * `max-width` is a guard against a very wide, very short cell letterboxing the
+ * badge out sideways; it is a share of the cell, so it never re-introduces the
+ * clipping that scaling it alongside the height did.
+ */
+.cell-2d .cell-shape svg {
+  width:auto;
+  height:100%;
+  max-width:92%;
+  /* Enough separation from whatever it is lying over, at any brightness. */
+  filter: drop-shadow(0 0 7px rgba(0,0,0,0.9));
+}
+
+/*
+ * A cell that is not showing a stimulus shows no shape either.
+ *
+ * `clearGrid` empties these, but relying on that means the shape outlives the
+ * picture the moment any path forgets to call it — and one did, which is how it
+ * came to sit on an empty grid through the inter-stimulus interval. Hanging it
+ * off `.active`, the class the cell already uses to mean "the stimulus is up",
+ * makes the two impossible to separate: whatever hides the picture hides this.
+ *
+ * The empty-cell case this replaces could not happen anyway. With position
+ * switched off there is no active cell, and the shape is drawn in the strip
+ * above the grid instead.
+ */
+.cell-2d:not(.active) .cell-shape { display:none; }

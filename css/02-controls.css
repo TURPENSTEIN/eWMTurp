@@ -1,0 +1,75 @@
+/* Refactor safety/responsiveness */
+button, input, select { position:relative; z-index:1; }
+.modal-overlay, .modal-panel { isolation:isolate; }
+@media (max-width:480px) {
+  .setup-header { padding-top:8px; }
+  .primary-panel { padding:14px; }
+  .control-row { align-items:flex-start; }
+  .control-row > :last-child { flex-shrink:0; }
+  .btn-row { flex-direction:column; }
+  .btn-row .btn { width:100% !important; flex:1 !important; }
+  .game-stage { gap:6px; padding:5px; }
+  .side-controls { width:52px; min-width:46px; }
+  .grid-2d { gap:4px; max-width:calc(100vw - 118px); max-height:calc(100vh - 150px); }
+  .scene-3d { max-width:none; max-height:none; width:100%; height:100%; }
+
+  .hud-stat .hud-lbl { display:none; }
+  .hud-btn { padding:5px 8px; }
+}
+
+/* 3D viewport: centered, uncapped, and symmetric. */
+.scene-3d {
+  position:relative;
+  display:flex;
+  width:100%;
+  height:100%;
+  min-width:0;
+  min-height:0;
+  max-width:none;
+  max-height:none;
+  margin:auto;
+  padding:0;
+  overflow:hidden;
+  align-items:center;
+  justify-content:center;
+  place-items:center;
+}
+
+.scene-3d canvas {
+  position:relative !important;
+  inset:auto !important;
+  top:auto !important;
+  right:auto !important;
+  bottom:auto !important;
+  left:auto !important;
+  display:block !important;
+  width:100% !important;
+  height:100% !important;
+  max-width:none !important;
+  max-height:none !important;
+  margin:0 !important;
+  padding:0;
+  flex:1 1 auto;
+}
+
+@media (max-width:700px) {
+  .scene-3d {
+    width:100%;
+    height:100%;
+    max-width:none;
+    max-height:none;
+    margin:auto;
+  }
+}
+
+/* Custom Words (session only). Additive styles; nothing above is altered. */
+.custom-words-panel { margin:-4px 0 10px; padding:12px; border:1px solid var(--border); border-radius:10px; background:var(--bg-elevated); }
+.custom-words-row { display:flex; gap:8px; }
+.custom-words-row input { flex:1; min-width:0; text-transform:uppercase; }
+.custom-words-list { display:flex; flex-wrap:wrap; gap:6px; margin-top:10px; }
+.custom-words-list:empty { margin-top:0; }
+.custom-word-chip { display:inline-flex; align-items:center; gap:6px; padding:4px 6px 4px 10px; border:1px solid var(--border-hover); border-radius:999px; font-family:var(--font-mono); font-size:.62rem; letter-spacing:.6px; color:var(--text); background:rgba(255,255,255,.03); }
+.custom-word-chip button { border:none; background:none; color:var(--text-muted); cursor:pointer; font-size:.8rem; line-height:1; padding:0 4px; }
+.custom-word-chip button:hover { color:var(--text); }
+.custom-words-footer { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-top:10px; }
+.custom-words-count { font-family:var(--font-mono); font-size:.6rem; color:var(--text-dim); }

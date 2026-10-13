@@ -1,0 +1,842 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Long Term Memory Recall - Posner Mixed Task</title>
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --surface-color: #1e293b;
+            --surface-hover: #334155;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --accent: #38bdf8;
+            --accent-hover: #0ea5e9;
+            --danger: #ef4444;
+            --success: #22c55e;
+            --border: #334155;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow-x: hidden;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem 2rem;
+            background-color: var(--surface-color);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .logo {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--accent);
+        }
+
+        .stats-bar {
+            display: flex;
+            gap: 1.5rem;
+            font-size: 0.9rem;
+            color: var(--text-muted);
+        }
+
+        .stat-item span {
+            color: var(--text-main);
+            font-weight: 600;
+        }
+
+        .nav-buttons {
+            display: flex;
+            gap: 0.75rem;
+        }
+
+        button {
+            background-color: var(--surface-hover);
+            color: var(--text-main);
+            border: 1px solid var(--border);
+            padding: 0.5rem 1rem;
+            border-radius: 0.375rem;
+            cursor: pointer;
+            font-weight: 500;
+            transition: background-color 0.2s, border-color 0.2s;
+        }
+
+        button:hover {
+            background-color: var(--border);
+        }
+
+        button.primary {
+            background-color: var(--accent);
+            color: #0f172a;
+            border: none;
+        }
+
+        button.primary:hover {
+            background-color: var(--accent-hover);
+        }
+
+        main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+            position: relative;
+        }
+
+        .stage {
+            background-color: var(--surface-color);
+            border: 1px solid var(--border);
+            border-radius: 1rem;
+            width: 100%;
+            max-width: 650px;
+            min-height: 420px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+            position: relative;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+        }
+
+        .cue-text {
+            font-size: 1.25rem;
+            color: var(--accent);
+            margin-bottom: 1.5rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            font-weight: 600;
+        }
+
+        .stimulus-container {
+            display: flex;
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .stimulus-box {
+            font-size: 2.5rem;
+            font-weight: 700;
+            background: var(--bg-color);
+            padding: 1.5rem 2.5rem;
+            border-radius: 0.75rem;
+            border: 1px solid var(--border);
+            min-width: 140px;
+            text-align: center;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 1rem;
+            width: 100%;
+            max-width: 400px;
+        }
+
+        .action-buttons button {
+            flex: 1;
+            padding: 1rem;
+            font-size: 1rem;
+            font-weight: 600;
+        }
+
+        .overlay-panel {
+            position: fixed;
+            top: 0;
+            right: -450px;
+            width: 450px;
+            height: 100%;
+            background-color: var(--surface-color);
+            border-left: 1px solid var(--border);
+            box-shadow: -5px 0 25px rgba(0,0,0,0.5);
+            transition: right 0.3s ease;
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .overlay-panel.open {
+            right: 0;
+        }
+
+        .panel-header {
+            padding: 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .panel-content {
+            padding: 1.5rem;
+            overflow-y: auto;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        .setting-card {
+            background: var(--bg-color);
+            border: 1px solid var(--border);
+            border-radius: 0.5rem;
+            padding: 1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.75srem;
+        }
+
+        .setting-card label {
+            font-size: 0.875rem;
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+
+        .checkbox-row {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            cursor: pointer;
+            font-size: 0.95rem;
+            font-weight: 500;
+        }
+
+        .checkbox-row input {
+            width: 18px;
+            height: 18px;
+            accent-color: var(--accent);
+            cursor: pointer;
+        }
+
+        .level-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 0.5rem;
+            margin-top: 0.5rem;
+        }
+
+        .level-btn {
+            background: var(--surface-color);
+            border: 1px solid var(--border);
+            padding: 0.5rem;
+            border-radius: 0.375rem;
+            color: var(--text-main);
+            font-weight: 600;
+            font-size: 0.85rem;
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.2s;
+        }
+
+        .level-btn.active {
+            background: var(--accent);
+            color: #0f172a;
+            border-color: var(--accent);
+        }
+
+        .keybind-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: var(--surface-color);
+            padding: 0.75rem 1rem;
+            border-radius: 0.5rem;
+            border: 1px solid var(--border);
+        }
+
+        .key-capture-btn {
+            background: var(--surface-hover);
+            border: 1px solid var(--border);
+            padding: 0.375rem 0.75rem;
+            border-radius: 0.25rem;
+            color: var(--accent);
+            font-weight: 600;
+            cursor: pointer;
+            min-width: 60px;
+            text-align: center;
+        }
+
+        .key-capture-btn.listening {
+            background: var(--accent);
+            color: #0f172a;
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+
+        .welcome-screen {
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            gap: 1.25rem;
+            align-items: center;
+            max-width: 500px;
+        }
+
+        .welcome-screen h1 {
+            font-size: 1.75rem;
+        }
+
+        .welcome-screen p {
+            color: var(--text-muted);
+            line-height: 1.5;
+            font-size: 0.95rem;
+        }
+
+        .trial-counter {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin-bottom: 1rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+        }
+
+        select {
+            background: var(--surface-color);
+            color: var(--text-main);
+            border: 1px solid var(--border);
+            padding: 0.5rem;
+            border-radius: 0.375rem;
+            width: 100%;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="logo">Long Term Memory Recall</div>
+        <div class="stats-bar">
+            <div class="stat-item">Level: <span id="stat-level">1</span></div>
+            <div class="stat-item">Accuracy: <span id="stat-acc">100%</span></div>
+            <div class="stat-item">Trial: <span id="stat-trial">0/32</span></div>
+        </div>
+        <div class="nav-buttons">
+            <button id="btn-settings">Settings</button>
+        </div>
+    </header>
+
+    <main>
+        <div class="stage" id="game-stage">
+            <!-- Welcome / Instructions Screen -->
+            <div class="welcome-screen" id="welcome-screen">
+                <h1>Posner Mixed Task Training</h1>
+                <p>Train how quickly your brain looks up facts and meanings. You will see a cue (e.g. Physical or Meaning), followed by a pair of items. Judge whether they match according to the rule!</p>
+                <button class="primary" id="btn-start" style="padding: 0.75rem 2rem; font-size: 1rem;">Start Session</button>
+            </div>
+
+            <!-- Rule / Fixation Screen -->
+            <div class="welcome-screen hidden" id="rule-screen">
+                <div class="trial-counter" id="rule-trial-counter">Trial 1 of 32</div>
+                <div class="cue-text" id="rule-cue-box" style="font-size: 1.75rem;">Rule: MEANING</div>
+                <p id="rule-instruction-hint">Get ready...</p>
+                <button id="btn-ready" class="hidden">Press Space or Click to Begin Trial</button>
+            </div>
+
+            <!-- Active Training Screen -->
+            <div class="training-container hidden" id="training-container">
+                <div class="trial-counter" id="game-trial-counter">Trial 1 of 32</div>
+                <div class="cue-text" id="cue-display">Rule: Meaning</div>
+                <div class="stimulus-container">
+                    <div class="stimulus-box" id="stimulus-left">4</div>
+                    <div class="stimulus-box" id="stimulus-right">IV</div>
+                </div>
+                <div class="action-buttons">
+                    <button id="btn-same">Same (<span id="lbl-key-same">S</span>)</button>
+                    <button id="btn-diff">Different (<span id="lbl-key-diff">D</span>)</button>
+                </div>
+            </div>
+
+            <!-- Session Summary Screen -->
+            <div class="welcome-screen hidden" id="summary-screen">
+                <h1>Session Complete!</h1>
+                <p id="summary-stats-text">Great job maintaining your cognitive pacing.</p>
+                <button class="primary" id="btn-restart">Start New Session</button>
+            </div>
+        </div>
+    </main>
+
+    <!-- Settings Panel -->
+    <div class="overlay-panel" id="settings-panel">
+        <div class="panel-header">
+            <h3>Session Settings</h3>
+            <button id="btn-close-settings">Close</button>
+        </div>
+        <div class="panel-content">
+            <!-- Training Mode -->
+            <div class="setting-card">
+                <label>Training Mode</label>
+                <select id="setting-training-mode">
+                    <option value="progressive">Progressive (Adaptive difficulty)</option>
+                    <option value="manual">Manual (Fixed level choice)</option>
+                </select>
+            </div>
+
+            <!-- Multi Mode Toggle -->
+            <div class="setting-card">
+                <label class="checkbox-row">
+                    <input type="checkbox" id="setting-multimode">
+                    <span>Multi Mode (Include semantic relationships alongside classic numbers)</span>
+                </label>
+            </div>
+
+            <!-- Rule Screen Auto-Advance -->
+            <div class="setting-card">
+                <label for="setting-auto-advance">Rule Screen Auto-Advance Delay</label>
+                <select id="setting-auto-advance">
+                    <option value="0">Manual (Press Space/Click)</option>
+                    <option value="1">1 second</option>
+                    <option value="1.5">1.5 seconds</option>
+                    <option value="2">2 seconds</option>
+                </select>
+            </div>
+
+            <!-- Sound Effects -->
+            <div class="setting-card">
+                <label class="checkbox-row">
+                    <input type="checkbox" id="setting-sound" checked>
+                    <span>Sound Effects (Play audio cues for feedback)</span>
+                </label>
+            </div>
+
+            <!-- Difficulty Level Selection -->
+            <div class="setting-card" id="manual-level-card">
+                <label>Select Starting / Fixed Difficulty Level (1 - 10)</label>
+                <div class="level-grid" id="level-grid">
+                    <!-- Populated dynamically -->
+                </div>
+            </div>
+
+            <!-- Keybindings -->
+            <div class="setting-card">
+                <label>Keybindings Customization</label>
+                <div class="keybind-row" style="margin-top: 0.5rem;">
+                    <span>Same Action</span>
+                    <button class="key-capture-btn" id="bind-same" data-action="same">S</button>
+                </div>
+                <div class="keybind-row" style="margin-top: 0.5rem;">
+                    <span>Different Action</span>
+                    <button class="key-capture-btn" id="bind-diff" data-action="diff">D</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Application State
+        const state = {
+            level: 5,
+            correctCount: 0,
+            totalCount: 0,
+            currentTrialIndex: 0,
+            maxTrials: 32,
+            isRunning: false,
+            phase: 'welcome', // welcome, rule, stimulus, summary
+            autoAdvanceTimer: null,
+            settings: {
+                trainingMode: 'progressive', // 'progressive' or 'manual'
+                multiMode: false,
+                autoAdvanceDelay: 1, // in seconds, 0 means manual
+                soundEnabled: true,
+                fixedLevel: 5,
+                sameKey: 'KeyS',
+                sameKeyLabel: 'S',
+                diffKey: 'KeyD',
+                diffKeyLabel: 'D'
+            },
+            currentTrialData: {
+                rule: '',
+                left: '',
+                right: '',
+                isSame: false
+            },
+            listeningForBinding: null
+        };
+
+        // Audio Context for synthetic feedback beeps
+        let audioCtx = null;
+        function playTone(success) {
+            if (!state.settings.soundEnabled) return;
+            try {
+                if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = success ? 'sine' : 'sawtooth';
+                osc.frequency.setValueAtTime(success ? 587.33 : 220, audioCtx.currentTime); // D5 vs A3
+                gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.15);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.15);
+            } catch(e) {
+                // Audio context policy fallback
+            }
+        }
+
+        // DOM Elements
+        const welcomeScreen = document.getElementById('welcome-screen');
+        const ruleScreen = document.getElementById('rule-screen');
+        const trainingContainer = document.getElementById('training-container');
+        const summaryScreen = document.getElementById('summary-screen');
+
+        const startBtn = document.getElementById('btn-start');
+        const restartBtn = document.getElementById('btn-restart');
+        const readyBtn = document.getElementById('btn-ready');
+        const settingsBtn = document.getElementById('btn-settings');
+        const closeSettingsBtn = document.getElementById('btn-close-settings');
+        const settingsPanel = document.getElementById('settings-panel');
+
+        const ruleCueBox = document.getElementById('rule-cue-box');
+        const ruleTrialCounter = document.getElementById('rule-trial-counter');
+        const gameTrialCounter = document.getElementById('game-trial-counter');
+        const ruleInstructionHint = document.getElementById('rule-instruction-hint');
+
+        const cueDisplay = document.getElementById('cue-display');
+        const stimulusLeft = document.getElementById('stimulus-left');
+        const stimulusRight = document.getElementById('stimulus-right');
+        const sameBtn = document.getElementById('btn-same');
+        const diffBtn = document.getElementById('btn-diff');
+        const lblKeySame = document.getElementById('lbl-key-same');
+        const lblKeyDiff = document.getElementById('lbl-key-diff');
+
+        const bindSameBtn = document.getElementById('bind-same');
+        const bindDiffBtn = document.getElementById('bind-diff');
+        const settingTrainingMode = document.getElementById('setting-training-mode');
+        const settingMultimode = document.getElementById('setting-multimode');
+        const settingAutoAdvance = document.getElementById('setting-auto-advance');
+        const settingSound = document.getElementById('setting-sound');
+        const levelGrid = document.getElementById('level-grid');
+        const manualLevelCard = document.getElementById('manual-level-card');
+
+        const statLevel = document.getElementById('stat-level');
+        const statAcc = document.getElementById('stat-acc');
+        const statTrial = document.getElementById('stat-trial');
+        const summaryStatsText = document.getElementById('summary-stats-text');
+
+        // Build Level Grid buttons (1 to 10 with half steps)
+        function buildLevelGrid() {
+            levelGrid.innerHTML = '';
+            const levels = [1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5, 5.5, 6, 6.5, 7, 7.5, 8, 8.5, 9, 9.5, 10];
+            levels.forEach(lvl => {
+                const btn = document.createElement('button');
+                btn.className = `level-btn ${state.settings.fixedLevel === lvl ? 'active' : ''}`;
+                btn.textContent = lvl;
+                btn.addEventListener('click', () => {
+                    state.settings.fixedLevel = lvl;
+                    if (state.settings.trainingMode === 'manual') {
+                        state.level = lvl;
+                        statLevel.textContent = lvl;
+                    }
+                    saveStorage();
+                    buildLevelGrid();
+                });
+                levelGrid.appendChild(btn);
+            });
+        }
+
+        // Storage Management
+        function loadStorage() {
+            const saved = localStorage.getItem('posner_trainer_settings');
+            if (saved) {
+                state.settings = JSON.parse(saved);
+                updateKeybindLabels();
+                settingTrainingMode.value = state.settings.trainingMode;
+                settingMultimode.checked = state.settings.multiMode;
+                settingAutoAdvance.value = state.settings.autoAdvanceDelay;
+                settingSound.checked = state.settings.soundEnabled;
+                if (state.settings.trainingMode === 'manual') {
+                    state.level = state.settings.fixedLevel;
+                }
+            }
+            statLevel.textContent = state.level;
+            buildLevelGrid();
+        }
+
+        function saveStorage() {
+            localStorage.setItem('posner_trainer_settings', JSON.stringify(state.settings));
+        }
+
+        function updateKeybindLabels() {
+            lblKeySame.textContent = state.settings.sameKeyLabel;
+            lblKeyDiff.textContent = state.settings.diffKeyLabel;
+            bindSameBtn.textContent = state.settings.sameKeyLabel;
+            bindDiffBtn.textContent = state.settings.diffKeyLabel;
+        }
+
+        // Keybinding Customization Capture
+        document.querySelectorAll('.key-capture-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const action = e.target.getAttribute('data-action');
+                state.listeningForBinding = action;
+                e.target.textContent = 'Press key...';
+                e.target.classList.add('listening');
+            });
+        });
+
+        window.addEventListener('keydown', (e) => {
+            if (state.listeningForBinding) {
+                e.preventDefault();
+                const action = state.listeningForBinding;
+                let label = e.key.toUpperCase();
+                if (e.key === ' ') label = 'SPACE';
+                
+                if (action === 'same') {
+                    state.settings.sameKey = e.code;
+                    state.settings.sameKeyLabel = label;
+                } else if (action === 'diff') {
+                    state.settings.diffKey = e.code;
+                    state.settings.diffKeyLabel = label;
+                }
+
+                document.querySelectorAll('.key-capture-btn').forEach(b => b.classList.remove('listening'));
+                state.listeningForBinding = null;
+                updateKeybindLabels();
+                saveStorage();
+                return;
+            }
+
+            // Handle Space to advance rule screen if manual advance is chosen
+            if (state.phase === 'rule' && state.settings.autoAdvanceDelay == 0 && (e.code === 'Space' || e.code === state.settings.sameKey || e.code === state.settings.diffKey)) {
+                e.preventDefault();
+                advanceToStimulus();
+                return;
+            }
+
+            // Game Action Key listeners during active training
+            if (state.phase !== 'stimulus') return;
+
+            if (e.code === state.settings.sameKey) {
+                handleUserChoice(true);
+            } else if (e.code === state.settings.diffKey) {
+                handleUserChoice(false);
+            }
+        });
+
+        // Settings Event Listeners
+        settingsBtn.addEventListener('click', () => settingsPanel.classList.add('open'));
+        closeSettingsBtn.addEventListener('click', () => settingsPanel.classList.remove('open'));
+
+        settingTrainingMode.addEventListener('change', (e) => {
+            state.settings.trainingMode = e.target.value;
+            if (e.target.value === 'manual') {
+                state.level = state.settings.fixedLevel;
+            }
+            statLevel.textContent = state.level;
+            saveStorage();
+        });
+
+        settingMultimode.addEventListener('change', (e) => {
+            state.settings.multiMode = e.target.checked;
+            saveStorage();
+        });
+
+        settingAutoAdvance.addEventListener('change', (e) => {
+            state.settings.autoAdvanceDelay = parseFloat(e.target.value);
+            saveStorage();
+        });
+
+        settingSound.addEventListener('change', (e) => {
+            state.settings.soundEnabled = e.target.checked;
+            saveStorage();
+        });
+
+        // Session Flow Control
+        startBtn.addEventListener('click', startSession);
+        restartBtn.addEventListener('click', startSession);
+        readyBtn.addEventListener('click', advanceToStimulus);
+
+        function startSession() {
+            state.currentTrialIndex = 0;
+            state.correctCount = 0;
+            state.totalCount = 0;
+            if (state.settings.trainingMode === 'manual') {
+                state.level = state.settings.fixedLevel;
+            } else {
+                state.level = 1; // Start progressive at level 1
+            }
+            statLevel.textContent = state.level;
+            
+            welcomeScreen.classList.add('hidden');
+            summaryScreen.classList.add('hidden');
+            settingsPanel.classList.remove('open');
+            
+            nextTrial();
+        }
+
+        function nextTrial() {
+            if (state.currentTrialIndex >= state.maxTrials) {
+                endSession();
+                return;
+            }
+
+            state.currentTrialIndex++;
+            statTrial.textContent = `${state.currentTrialIndex}/${state.maxTrials}`;
+            ruleTrialCounter.textContent = `Trial ${state.currentTrialIndex} of ${state.maxTrials}`;
+            gameTrialCounter.textContent = `Trial ${state.currentTrialIndex} of ${state.maxTrials}`;
+
+            // Generate Trial Stimulus & Rule
+            generateTrialContent();
+
+            // Show Rule Screen First
+            state.phase = 'rule';
+            ruleScreen.classList.remove('hidden');
+            trainingContainer.classList.add('hidden');
+
+            ruleCueBox.textContent = `Rule: ${state.currentTrialData.rule.toUpperCase()}`;
+
+            if (state.settings.autoAdvanceDelay > 0) {
+                ruleInstructionHint.textContent = `Proceeding in ${state.settings.autoAdvanceDelay}s...`;
+                readyBtn.classList.add('hidden');
+                clearTimeout(state.autoAdvanceTimer);
+                state.autoAdvanceTimer = setTimeout(() => {
+                    if (state.phase === 'rule') {
+                        advanceToStimulus();
+                    }
+                }, state.settings.autoAdvanceDelay * 1000);
+            } else {
+                ruleInstructionHint.textContent = `Press Space or click below when ready.`;
+                readyBtn.classList.remove('hidden');
+            }
+        }
+
+        function advanceToStimulus() {
+            clearTimeout(state.autoAdvanceTimer);
+            state.phase = 'stimulus';
+            ruleScreen.classList.add('hidden');
+            trainingContainer.classList.remove('hidden');
+
+            cueDisplay.textContent = `Rule: ${state.currentTrialData.rule.toUpperCase()}`;
+            stimulusLeft.textContent = state.currentTrialData.left;
+            stimulusRight.textContent = state.currentTrialData.right;
+        }
+
+        function generateTrialContent() {
+            // Rules: 'physical' or 'meaning' (plus semantic if multi-mode)
+            const rules = state.settings.multiMode ? ['physical', 'meaning', 'semantic'] : ['physical', 'meaning'];
+            const rule = rules[Math.floor(Math.random() * rules.length)];
+            state.currentTrialData.rule = rule;
+
+            const isSame = Math.random() > 0.5;
+            state.currentTrialData.isSame = isSame;
+
+            if (rule === 'physical') {
+                // e.g., digit vs digit or word vs word
+                const pairs = [
+                    { l: '4', r: '4', same: true },
+                    { l: 'FOUR', r: 'FOUR', same: true },
+                    { l: '7', r: '9', same: false },
+                    { l: 'THREE', r: 'FIVE', same: false },
+                    { l: '2', r: 'SEVEN', same: false }
+                ];
+                const chosen = pairs[Math.floor(Math.random() * pairs.length)];
+                // Force match target if needed
+                if (isSame) {
+                    state.currentTrialData.left = '4';
+                    state.currentTrialData.right = '4';
+                } else {
+                    state.currentTrialData.left = '4';
+                    state.currentTrialData.right = 'FOUR';
+                }
+            } else if (rule === 'meaning') {
+                // e.g., digit paired with word representation of number
+                const numPairs = [
+                    { d: '2', w: 'TWO' },
+                    { d: '4', w: 'FOUR' },
+                    { d: '7', w: 'SEVEN' },
+                    { d: '9', w: 'NINE' }
+                ];
+                const p1 = numPairs[Math.floor(Math.random() * numPairs.length)];
+                state.currentTrialData.left = p1.d;
+
+                if (isSame) {
+                    state.currentTrialData.right = p1.w;
+                } else {
+                    const p2 = numPairs.filter(p => p.d !== p1.d)[0];
+                    state.currentTrialData.right = p2.w;
+                }
+            } else {
+                // Semantic relationships (Multi Mode)
+                const semanticPairs = [
+                    { l: 'APPLE', r: 'FRUIT', same: true },
+                    { l: 'DOG', r: 'ANIMAL', same: true },
+                    { l: 'CHAIR', r: 'VEHICLE', same: false },
+                    { l: 'PARIS', r: 'CAPITAL', same: true }
+                ];
+                const sp = semanticPairs[Math.floor(Math.random() * semanticPairs.length)];
+                state.currentTrialData.left = sp.l;
+                state.currentTrialData.right = isSame ? sp.r : (sp.same ? 'TABLE' : 'FRUIT');
+                state.currentTrialData.isSame = isSame;
+            }
+        }
+
+        function handleUserChoice(userGuessedSame) {
+            if (state.phase !== 'stimulus') return;
+
+            state.totalCount++;
+            const correct = (userGuessedSame === state.currentTrialData.isSame);
+            if (correct) {
+                state.correctCount++;
+                playTone(true);
+            } else {
+                playTone(false);
+            }
+
+            // Update stats display
+            const accuracy = Math.round((state.correctCount / state.totalCount) * 100);
+            statAcc.textContent = `${accuracy}%`;
+
+            // Adaptive difficulty adjustment if in progressive mode
+            if (state.settings.trainingMode === 'progressive') {
+                if (correct && state.level < 10) state.level = Math.min(10, +(state.level + 0.1).toFixed(1));
+                else if (!correct && state.level > 1) state.level = Math.max(1, +(state.level - 0.2).toFixed(1));
+                statLevel.textContent = state.level;
+            }
+
+            // Proceed to next trial after short pause
+            setTimeout(() => {
+                nextTrial();
+            }, 300);
+        }
+
+        sameBtn.addEventListener('click', () => handleUserChoice(true));
+        diffBtn.addEventListener('click', () => handleUserChoice(false));
+
+        function endSession() {
+            state.phase = 'summary';
+            trainingContainer.classList.add('hidden');
+            summaryScreen.classList.remove('hidden');
+
+            const finalAcc = state.totalCount > 0 ? Math.round((state.correctCount / state.totalCount) * 100) : 0;
+            summaryStatsText.innerHTML = `You completed all 32 trials with an overall accuracy of <strong>${finalAcc}%</strong>. Consistency over time builds faster memory retrieval!`;
+        }
+
+        // Initialize App on load
+        loadStorage();
+    </script>
+</body>
+</html>
