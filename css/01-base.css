@@ -113,7 +113,7 @@ select:focus, input:focus { border-color:var(--cyan); }
 .accordion-header span { font-family:var(--font-mono); font-size:0.7rem; font-weight:600; text-transform:uppercase; letter-spacing:1.5px; color:var(--text-muted); }
 .accordion-header .chevron { transition:transform 0.3s; color:var(--text-dim); font-size:0.8rem; }
 .accordion.open .accordion-header .chevron { transform:rotate(180deg); }
-.accordion-body { max-height:0; overflow:hidden; transition:max-height 0.4s ease; }
+.accordion-body { max-height:0; overflow-y:auto; transition:max-height 0.4s ease; }
 .accordion.open .accordion-body { max-height:1200px; }
 .accordion-inner { background:var(--bg-panel); border:1px solid var(--border); border-top:none; border-radius:0 0 10px 10px; padding:16px; }
 .toggle-switch { position:relative; width:40px; height:22px; }

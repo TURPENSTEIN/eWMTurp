@@ -73,3 +73,8 @@ button, input, select { position:relative; z-index:1; }
 .custom-word-chip button:hover { color:var(--text); }
 .custom-words-footer { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-top:10px; }
 .custom-words-count { font-family:var(--font-mono); font-size:.6rem; color:var(--text-dim); }
+/* Custom word-pool source / share controls (additive). */
+.cw-pool-label,.cw-freq-label{font-family:var(--font-mono);font-size:.6rem;letter-spacing:1px;color:var(--text-muted);text-transform:uppercase;display:block;margin-bottom:3px;}
+#cw-source{flex:1;min-width:150px;background:var(--bg-panel);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:6px 8px;font-size:.75rem;}
+#cw-freq{flex:0 0 auto;width:110px;}
+#cw-freq-disp{font-family:var(--font-mono);font-size:.7rem;color:var(--cyan);min-width:36px;text-align:right;}

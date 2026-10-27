@@ -26,6 +26,43 @@
   // The session list. Plain array in memory; nothing persists it.
   var list = [];
 
+  /* ------------------------------------------------------------------ *
+   * Word-pool source & share                                           *
+   * ------------------------------------------------------------------ */
+  // 'mix'      -> built-in pool + custom words, biased by the custom share
+  // 'exclusive'-> custom words only (falls back to built-in if the list is empty)
+  function source() {
+    var el = document.getElementById('cw-source');
+    return el ? el.value : 'mix';
+  }
+  function freq() {
+    var el = document.getElementById('cw-freq');
+    return el ? Number(el.value) : 50;
+  }
+  /*
+   * Build the audio pool the block hook draws from, honouring the chosen
+   * source and the custom share percentage. genSequence() still receives a
+   * flat index pool, so the target/lure structure is preserved by
+   * construction; only which word values can land at each index changes.
+   */
+  function buildPool() {
+    var general = (AFFECTIVE_AUDIO_WORDS || []).slice();
+    var mode = source();
+    var f = freq();
+    if (mode === 'exclusive') {
+      return list.length ? list.slice() : general;
+    }
+    if (f <= 0) return general;
+    if (f >= 100) return list.length ? list.slice() : general;
+    // Bias the pool so custom words occupy roughly `f` percent of it.
+    var targetCustom = Math.max(1, Math.round(general.length * f / (100 - f)));
+    var reps = Math.max(1, Math.ceil(targetCustom / Math.max(1, list.length)));
+    reps = Math.min(reps, 60);
+    var weighted = [];
+    list.forEach(function (w) { for (var r = 0; r < reps; r++) weighted.push(w); });
+    return general.concat(weighted);
+  }
+
   function normalize(raw) {
     return String(raw == null ? '' : raw)
       .trim()
@@ -46,6 +83,64 @@
       });
     } catch (e) {}
     return set;
+  }
+
+  /* ------------------------------------------------------------------ *
+   * Persistence (IndexedDB, same 'ewmturp' DB as the custom image decks) *
+   * ------------------------------------------------------------------ */
+  function openDB() {
+    return new Promise(function (resolve, reject) {
+      if (typeof indexedDB === 'undefined') { reject(new Error('no indexedDB')); return; }
+      var req = indexedDB.open('ewmturp', 1);
+      req.onupgradeneeded = function () {
+        var db = req.result;
+        if (!db.objectStoreNames.contains('custom-images')) db.createObjectStore('custom-images');
+      };
+      req.onsuccess = function () { resolve(req.result); };
+      req.onerror = function () { reject(req.error); };
+    });
+  }
+  function loadPool() {
+    return openDB().then(function (db) {
+      return new Promise(function (resolve, reject) {
+        var tx = db.transaction('custom-images', 'readonly');
+        var req = tx.objectStore('custom-images').get('custom-words-v1');
+        req.onsuccess = function () {
+          var data = req.result || {};
+          list = Array.isArray(data.words) ? data.words.slice() : [];
+          var modeSel = document.getElementById('cw-source');
+          var freqSel = document.getElementById('cw-freq');
+          var freqDisp = document.getElementById('cw-freq-disp');
+          if (modeSel) modeSel.value = data.mode === 'exclusive' ? 'exclusive' : 'mix';
+          if (freqSel) freqSel.value = Number.isFinite(data.freq) ? data.freq : 50;
+          if (freqDisp) freqDisp.textContent = ((freqSel && freqSel.value) || 50) + '%';
+          resolve();
+        };
+        req.onerror = function () { reject(req.error); };
+      });
+    }).catch(function (e) {
+      list = [];
+      console.warn('[CustomWords] could not load saved pool:', e);
+    });
+  }
+  function savePool() {
+    var modeSel = document.getElementById('cw-source');
+    var freqSel = document.getElementById('cw-freq');
+    var data = {
+      words: list.slice(),
+      mode: (modeSel && modeSel.value) ? modeSel.value : 'mix',
+      freq: (freqSel && freqSel.value != null) ? Number(freqSel.value) : 50
+    };
+    return openDB().then(function (db) {
+      return new Promise(function (resolve, reject) {
+        var tx = db.transaction('custom-images', 'readwrite');
+        tx.objectStore('custom-images').put(data, 'custom-words-v1');
+        tx.oncomplete = resolve;
+        tx.onerror = function () { reject(tx.error); };
+      });
+    }).catch(function (e) {
+      console.warn('[CustomWords] could not save pool:', e);
+    });
   }
 
   function isEnabled() {
@@ -104,6 +199,7 @@
     if (list.length >= MAX_WORDS) { setNote('Session list is full (' + MAX_WORDS + ' words).'); return false; }
     list.push(word);
     render();
+    savePool();
     return true;
   }
 
@@ -111,11 +207,13 @@
     var i = list.indexOf(word);
     if (i !== -1) list.splice(i, 1);
     render();
+    savePool();
   }
 
   function clear() {
     list = [];
     render();
+    savePool();
   }
 
   function bindUI() {
@@ -137,6 +235,14 @@
     });
     if (clearBtn) clearBtn.addEventListener('click', function () { clear(); });
     if (toggle) toggle.addEventListener('change', function () { render(); });
+    var sourceSel = document.getElementById('cw-source');
+    var freqSel = document.getElementById('cw-freq');
+    var freqDisp = document.getElementById('cw-freq-disp');
+    if (sourceSel) sourceSel.addEventListener('change', function () { render(); savePool(); });
+    if (freqSel) {
+      freqSel.addEventListener('input', function () { if (freqDisp) freqDisp.textContent = freqSel.value + '%'; });
+      freqSel.addEventListener('change', function () { render(); savePool(); });
+    }
     render();
   }
 
@@ -156,7 +262,8 @@
       try {
         if (!isEnabled() || !list.length) return result;
         var s = this.getSettings();
-        var pool = (AFFECTIVE_AUDIO_WORDS || []).concat(list);
+        var mode = source();
+        var pool = buildPool();
         var seq = this.genSequence(pool.length, this.kSeq, s.matchRate, s.interference / 100);
         for (var i = 0; i < this.trials.length && i < seq.length; i++) {
           this.trials[i].aud = seq[i];
@@ -164,8 +271,11 @@
           // Session custom words may also surface as passive interference
           // distractors while Word Interference is on. Passive only: it never
           // creates a response target (render path unchanged).
-          if (s.wordInterference && this.trials[i].wordInterference && list.length && Math.random() < 0.5) {
-            this.trials[i].wordInterference = list[Math.floor(Math.random() * list.length)];
+          if (s.wordInterference && this.trials[i].wordInterference) {
+            var dPool = (mode === 'exclusive' && list.length) ? list : (AFFECTIVE_AUDIO_WORDS || []).concat(list);
+            if (dPool.length && Math.random() < 0.5) {
+              this.trials[i].wordInterference = dPool[Math.floor(Math.random() * dPool.length)];
+            }
           }
         }
       } catch (e) {
@@ -187,12 +297,13 @@
     isEnabled: isEnabled
   };
 
-  if (!installHook()) {
-    document.addEventListener('DOMContentLoaded', installHook, { once: true });
+  function start() {
+    installHook();
+    loadPool().then(bindUI, bindUI);
   }
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', bindUI, { once: true });
+    document.addEventListener('DOMContentLoaded', start, { once: true });
   } else {
-    bindUI();
+    start();
   }
 })();

@@ -611,7 +611,9 @@ const App = {
     // The picker is only relevant while that set is the chosen one.
     if (customPanel) customPanel.hidden = !customActive;
     this.updateCustomCount();
-    if (panel) panel.hidden = humanActive || mixActive;
+    // With "Your Images" chosen the anime submode panel (adult-content subtypes
+    // included) is irrelevant and confusing, so it stays hidden.
+    if (panel) panel.hidden = humanActive || mixActive || customActive;
 
     this.setAnimeMode(this.animeMode || 'standard', false);
 
@@ -628,7 +630,9 @@ const App = {
         ? 'Human Faces • Standard affective faces'
         : mixActive
           ? 'Mix Mode • Random pool from all available visual categories'
-          : (labels[this.animeMode] || labels.standard);
+          : customActive
+            ? 'Your Images • Pictures you supply yourself'
+            : (labels[this.animeMode] || labels.standard);
     }
 
     if (persist) this.saveSettings();

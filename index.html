@@ -280,6 +280,16 @@
               <button type="button" class="btn btn-secondary" id="btn-add-custom-word">Add</button>
             </div>
             <div class="custom-words-list" id="list-custom-words" aria-live="polite"></div>
+            <div class="custom-words-row">
+              <label class="cw-pool-label" for="cw-source">Word pool</label>
+              <select id="cw-source" aria-label="Custom word pool source">
+                <option value="mix">Mix with general pool</option>
+                <option value="exclusive">Custom words only</option>
+              </select>
+              <label class="cw-freq-label" for="cw-freq">Custom share</label>
+              <input type="range" id="cw-freq" min="0" max="100" value="50">
+              <span id="cw-freq-disp">50%</span>
+            </div>
             <div class="custom-words-footer">
               <span class="custom-words-count" id="custom-words-count">0 words for this session</span>
               <button type="button" class="btn btn-secondary" id="btn-clear-custom-words">Clear</button>
